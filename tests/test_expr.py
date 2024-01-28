@@ -16,25 +16,14 @@ def run_before_and_after_tests() -> Generator[None, None, None]:
 
 
 def test_add() -> None:
-    a = np.random.randn(3, 2)
+    a = np.random.randn(4, 1, 2)
     b = np.random.randn(3, 2)
     a_ = mpp.Parameter(a)
     b_ = mpp.Parameter(b)
     c_ = a_ + b_
     c_.backward()
-    grad = np.ones_like(a)
-    np.testing.assert_equal(a_.grad, grad)
-    np.testing.assert_equal(b_.grad, grad)
-
-
-def test_add_bcast_fails() -> None:
-    a = np.random.randn(3, 2)
-    b = np.random.randn(3, 1)
-    a_ = mpp.Parameter(a)
-    b_ = mpp.Parameter(b)
-    with pytest.raises(ValueError):
-        c_ = a_ + b_
-        del c_
+    np.testing.assert_equal(a_.grad, np.full_like(a, 3.0))
+    np.testing.assert_equal(b_.grad, np.full_like(b, 4.0))
 
 
 def test_add_scalar() -> None:
@@ -125,24 +114,16 @@ def test_maximum() -> None:
 
 
 def test_mult() -> None:
-    a = np.random.randn(3, 2)
+    a = np.random.randn(4, 1, 2)
     b = np.random.randn(3, 2)
     a_ = mpp.Parameter(a)
     b_ = mpp.Parameter(b)
     c_ = a_ * b_
     c_.backward()
-    np.testing.assert_equal(a_.grad, b)
-    np.testing.assert_equal(b_.grad, a)
-
-
-def test_mult_bcast_fails() -> None:
-    a = np.random.randn(3, 2)
-    b = np.random.randn(3, 1)
-    a_ = mpp.Parameter(a)
-    b_ = mpp.Parameter(b)
-    with pytest.raises(ValueError):
-        c_ = a_ * b_
-        del c_
+    a_grad = np.broadcast_to(b.sum(axis=0, keepdims=True), shape=(4, 1, 2))
+    b_grad = np.broadcast_to(a.sum(axis=0), shape=(3, 2))
+    np.testing.assert_equal(a_.grad, a_grad)
+    np.testing.assert_equal(b_.grad, b_grad)
 
 
 def test_mult_scalar() -> None:

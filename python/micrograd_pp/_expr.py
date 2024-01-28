@@ -56,7 +56,7 @@ class Expr:
             other = float(other)
         if isinstance(other, float):
             return _AddScalar(self, other)
-        return _Add(self, other)
+        return _Add(*_maybe_expand(self, other))
 
     def __getitem__(self, index: Any) -> Expr:
         return _Slice(self, index=index)
@@ -69,7 +69,7 @@ class Expr:
             other = float(other)
         if isinstance(other, float):
             return _MultScalar(self, other)
-        return _Mult(self, other)
+        return _Mult(*_maybe_expand(self, other))
 
     def __neg__(self) -> Expr:
         return self * (-1.0)
@@ -331,7 +331,7 @@ class Parameter(Expr):
 
 def maximum(a: Expr, b: Expr) -> Expr:
     """The element-wise maximum of two expressions."""
-    return _Maximum(a, b)
+    return _Maximum(*_maybe_expand(a, b))
 
 
 def relu(expr: Expr) -> Expr:
@@ -341,8 +341,6 @@ def relu(expr: Expr) -> Expr:
 
 class _Add(Expr):
     def __init__(self, a: Expr, b: Expr) -> None:
-        # TODO(parsiad): Support broadcasting
-        _raise_if_not_same_shape(a, b)
         super().__init__(value=a._value + b._value, children=(a, b))
         self._a = a
         self._b = b
@@ -372,6 +370,7 @@ class _Exp(Expr):
 
 class _Expand(Expr):
     def __init__(self, a: Expr, shape: tuple[int, ...]) -> None:
+        # TODO(parsiad): Materializing a broadcast is expensive
         super().__init__(value=np.broadcast_to(a._value, shape=shape), children=(a,))
         self._a = a
 
@@ -434,7 +433,6 @@ class _Max(Expr):
 
 class _Maximum(Expr):
     def __init__(self, a: Expr, b: Expr) -> None:
-        _raise_if_not_same_shape(a, b)
         super().__init__(value=np.maximum(a._value, b._value), children=(a, b))
         self._a = a
         self._b = b
@@ -446,8 +444,6 @@ class _Maximum(Expr):
 
 class _Mult(Expr):
     def __init__(self, a: Expr, b: Expr) -> None:
-        # TODO(parsiad): Support broadcasting
-        _raise_if_not_same_shape(a, b)
         super().__init__(value=a._value * b._value, children=(a, b))
         self._a = a
         self._b = b
@@ -543,8 +539,8 @@ class _Unsqueeze(Expr):
         self._a.update_grad(lambda: grad.squeeze(axis=self._dim))
 
 
-def _raise_if_not_same_shape(*exprs: Expr):
-    shape = next(iter(exprs)).shape
-    if not all(expr.shape == shape for expr in exprs):
-        msg = "Operands must be the same shape"
-        raise ValueError(msg)
+def _maybe_expand(a: Expr, b: Expr) -> tuple[Expr, Expr]:
+    shape = np.broadcast_shapes(a.shape, b.shape)
+    a_ = a if a.shape == shape else _Expand(a, shape=shape)
+    b_ = b if b.shape == shape else _Expand(b, shape=shape)
+    return a_, b_

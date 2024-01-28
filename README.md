@@ -74,7 +74,7 @@ model = mpp.Sequential(
 def cross_entropy_loss(input_: mpp.Expr, target: mpp.Expr) -> mpp.Expr:
     n, _ = input_.shape
     input_max = input_.max(dim=1)
-    delta = input_ - input_max.expand(input_.shape)
+    delta = input_ - input_max
     log_sum_exp = delta.exp().sum(dim=1).log().squeeze()
     return (log_sum_exp - delta[np.arange(n), target]).sum() / n
 
