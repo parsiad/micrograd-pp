@@ -379,11 +379,7 @@ class _Expand(Expr):
             dim = tuple(
                 [
                     self.ndim - 1 - i
-                    for i, (m, n) in enumerate(
-                        itertools.zip_longest(
-                            reversed(self._a.shape), reversed(self.shape)
-                        )
-                    )
+                    for i, (m, n) in enumerate(itertools.zip_longest(reversed(self._a.shape), reversed(self.shape)))
                     if m is None or m != n
                 ]
             )
@@ -470,9 +466,7 @@ class _Pow(Expr):
         self._pow = pow
 
     def _backward(self, grad: npt.NDArray) -> None:
-        self._a.update_grad(
-            lambda: grad * self._pow * self._a._value ** (self._pow - 1)
-        )
+        self._a.update_grad(lambda: grad * self._pow * self._a._value ** (self._pow - 1))
 
 
 class _ReLU(Expr):
