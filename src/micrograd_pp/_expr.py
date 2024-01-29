@@ -184,15 +184,20 @@ class Expr:
         """Take the element-wise natural logarithm."""
         return _Log(self)
 
-    def max(self, dim: int | tuple[int, ...] | None = None) -> Expr:
+    def max(self, dim: int | tuple[int, ...] | None = None, keepdim: bool = False) -> Expr:
         """Maximize across a dimension.
 
         Parameters
         ----------
         dim
             Axis or axes along which to operate. By default, all axes are used.
+        keepdim
+            Whether the output retains the specified dimension(s)
         """
-        return _Max(a=self, dim=dim)
+        retval = _Max(self, dim=dim)
+        if not keepdim:
+            retval = _Squeeze(retval, dim=dim)
+        return retval
 
     def set_label(self, label: str) -> None:
         """Set the expression label."""
@@ -208,15 +213,20 @@ class Expr:
         """
         return _Squeeze(self, dim=dim)
 
-    def sum(self, dim: int | tuple[int, ...] | None = None) -> Expr:
+    def sum(self, dim: int | tuple[int, ...] | None = None, keepdim: bool = False) -> Expr:
         """Sum across one or more dimensions.
 
         Parameters
         ----------
         dim
             Axis or axes along which to operate. By default, all axes are used.
+        keepdim
+            Whether the output retains the specified dimension(s)
         """
-        return _Sum(self, dim=dim)
+        retval = _Sum(self, dim=dim)
+        if not keepdim:
+            retval = _Squeeze(retval, dim=dim)
+        return retval
 
     def transpose(self, dim0: int, dim1: int) -> Expr:
         """Transpose axes.
