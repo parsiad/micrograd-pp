@@ -2,6 +2,7 @@
   <img alt="micrograd_pp" src="https://raw.githubusercontent.com/parsiad/micrograd-pp/main/logo.png">
 </p>
 
+![](https://github.com/parsiad/micrograd-pp/actions/workflows/tox.yml/badge.svg)
 <a href="https://github.com/parsiad/micrograd-pp"><img alt="GitHub" src="https://img.shields.io/badge/github-%23121011.svg?logo=github"></a>
 
 Micrograd++ is a minimalistic wrapper around NumPy which adds support for automatic differentiation.
