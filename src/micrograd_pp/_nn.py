@@ -1,4 +1,6 @@
 from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 
 from ._expr import Expr, Parameter, relu
@@ -77,6 +79,9 @@ class Sequential:
         for module in self._modules:
             x = module(x)
         return x
+
+    def __getitem__(self, index: Any) -> Expr:
+        return self._modules[index]
 
     def __repr__(self) -> str:
         return f"Sequential({', '.join(str(module) for module in self._modules)})"
