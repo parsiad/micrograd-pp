@@ -60,7 +60,8 @@ def test_mnist(batch_sz: int = 64, n_epochs: int = 3):
             loss.backward(opt=opt)
             opt.step()
         test_x = mpp.Constant(test_images)
-        test_fx = model(test_x)
+        with mpp.no_grad():
+            test_fx = model(test_x)
         pred_labels = np.argmax(test_fx.value, axis=1)
         accuracy = (pred_labels == test_labels).mean().item()
         print(f"Test accuracy at epoch {epoch}: {accuracy * 100:.2f}%")

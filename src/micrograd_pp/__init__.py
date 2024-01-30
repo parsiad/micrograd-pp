@@ -1,4 +1,4 @@
-from ._expr import Constant, Expr, Parameter, maximum, relu
+from ._expr import Constant, Expr, Parameter, is_grad_enabled, maximum, no_grad, relu
 from ._nn import Linear, ReLU, Sequential
 from ._opt import SGD
 
@@ -13,6 +13,8 @@ __all__ = (
     "Sequential",
     "SGD",
     "datasets",
+    "is_grad_enabled",
     "maximum",
+    "no_grad",
     "relu",
 )

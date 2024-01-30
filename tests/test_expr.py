@@ -136,6 +136,17 @@ def test_mult_scalar() -> None:
     np.testing.assert_equal(a_.grad, grad)
 
 
+def test_no_grad() -> None:
+    with mpp.no_grad():
+        a = np.random.randn(4, 1, 2)
+        b = np.random.randn(3, 2)
+        a_ = mpp.Parameter(a)
+        b_ = mpp.Parameter(b)
+        c_ = a_ * b_
+        with pytest.raises(ValueError):
+            c_.backward()
+
+
 def test_pow() -> None:
     a = np.random.randn(3, 2)
     a_ = mpp.Parameter(a)

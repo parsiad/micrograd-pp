@@ -1,13 +1,32 @@
 from __future__ import annotations
 
+import contextlib
 import itertools
 from abc import ABC, abstractmethod
 from collections import deque
 from functools import lru_cache
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Generator, Sequence
 
 import numpy as np
 import numpy.typing as npt
+
+
+_grad_mode = True
+
+
+@contextlib.contextmanager
+def no_grad() -> Generator[None, None, None]:
+    """Context manager that disables gradient computation."""
+    global _grad_mode
+    state = _grad_mode
+    _grad_mode = False
+    yield
+    _grad_mode = state
+
+
+def is_grad_enabled() -> bool:
+    """Determines whether or not gradient mode is enabled."""
+    return _grad_mode
 
 
 class Expr:
@@ -34,11 +53,15 @@ class Expr:
         requires_grad: bool | None = None,
     ) -> None:
         self._value = value
-        self._children = tuple(children)
         self._label = label
-        if requires_grad is None:
-            requires_grad = any(child._requires_grad for child in children)
-        self._requires_grad = requires_grad
+        if is_grad_enabled():
+            self._children = tuple(children)
+            if requires_grad is None:
+                requires_grad = any(child._requires_grad for child in children)
+            self._requires_grad = requires_grad
+        else:
+            self._children = ()
+            self._requires_grad = False
         self._grad = None
 
     def __repr__(self) -> str:
