@@ -34,7 +34,7 @@ class Expr:
         requires_grad: bool | None = None,
     ) -> None:
         self._value = value
-        self._children = set(children)
+        self._children = tuple(children)
         self._label = label
         if requires_grad is None:
             requires_grad = any(child._requires_grad for child in children)
