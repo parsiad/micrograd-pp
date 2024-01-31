@@ -126,7 +126,6 @@ class Expr:
     def _backward(self, grad: npt.NDArray) -> None:
         del grad
 
-    @lru_cache(maxsize=None)
     def _get_nodes(self) -> deque[Expr]:
         retval: deque[Expr] = deque()
         if not self._requires_grad:
