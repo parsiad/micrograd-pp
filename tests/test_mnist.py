@@ -46,6 +46,7 @@ def test_mnist(batch_sz: int = 64, n_epochs: int = 3):
     # Feedforward neural network
     model = mpp.Sequential(
         mpp.Linear(28 * 28, 128),
+        mpp.BatchNorm1d(128),
         mpp.ReLU(),
         mpp.Linear(128, 10),
     )
@@ -60,7 +61,7 @@ def test_mnist(batch_sz: int = 64, n_epochs: int = 3):
             loss.backward(opt=opt)
             opt.step()
         test_x = mpp.Constant(test_images)
-        with mpp.no_grad():
+        with mpp.eval(), mpp.no_grad():
             test_fx = model(test_x)
         pred_labels = np.argmax(test_fx.value, axis=1)
         accuracy = (pred_labels == test_labels).mean().item()

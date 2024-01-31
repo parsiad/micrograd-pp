@@ -113,6 +113,17 @@ def test_maximum() -> None:
     np.testing.assert_equal(b_.grad, ~grad)
 
 
+@pytest.mark.parametrize("dim", DIMS)
+def test_mean(dim: int | tuple[int, ...] | None) -> None:
+    dim = (0, 2)
+    a = np.random.randn(4, 3, 2)
+    a_ = mpp.Parameter(a)
+    b_ = a_.mean(dim=dim)
+    b_.backward()
+    grad = np.ones_like(a) / np.ones_like(a).sum(axis=dim, keepdims=True)
+    np.testing.assert_equal(a_.grad, grad)
+
+
 def test_mult() -> None:
     a = np.random.randn(4, 1, 2)
     b = np.random.randn(3, 2)
@@ -205,3 +216,12 @@ def test_unsqueeze(dim: int) -> None:
     b_.backward()
     grad = np.ones_like(a)
     np.testing.assert_equal(a_.grad, grad)
+
+
+@pytest.mark.parametrize("dim", DIMS)
+def test_var(dim: int | tuple[int, ...] | None) -> None:
+    a = np.random.randn(4, 3, 2)
+    b = a.var(axis=dim)
+    a_ = mpp.Constant(a)
+    b_ = a_.var(dim=dim)
+    np.testing.assert_allclose(b_.value, b)
