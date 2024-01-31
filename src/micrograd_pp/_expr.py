@@ -10,6 +10,8 @@ from typing import Any, Callable, Generator, Sequence
 import numpy as np
 import numpy.typing as npt
 
+from ._util import n_samples
+
 
 _grad_mode = True
 
@@ -222,6 +224,21 @@ class Expr:
             retval = _Squeeze(retval, dim=dim)
         return retval
 
+    def mean(self, dim: int | tuple[int, ...] | None = None, keepdim: bool = False) -> Expr:
+        """Mean across one or more dimensions.
+
+        Parameters
+        ----------
+        dim
+            Axis or axes along which to operate. By default, all axes are used.
+        keepdim
+            Whether the output retains the specified dimension(s)
+        """
+        retval = _Sum(self, dim=dim) / n_samples(dim=dim, shape=self.shape)
+        if not keepdim:
+            retval = _Squeeze(retval, dim=dim)
+        return retval
+
     def set_label(self, label: str) -> None:
         """Set the expression label."""
         self._label = label
@@ -287,6 +304,22 @@ class Expr:
             Position
         """
         return _Unsqueeze(self, dim=dim)
+
+    def var(self, dim: int | tuple[int, ...] | None = None, keepdim: bool = False) -> Expr:
+        """Variance across one or more dimensions.
+
+        Parameters
+        ----------
+        dim
+            Axis or axes along which to operate. By default, all axes are used.
+        keepdim
+            Whether the output retains the specified dimension(s)
+        """
+        delta = self - self.mean(dim=dim, keepdim=True)
+        retval = (delta * delta).mean(dim=dim, keepdim=True)
+        if not keepdim:
+            retval = _Squeeze(retval, dim=dim)
+        return retval
 
     @property
     def dtype(self) -> npt.DTypeLike:
