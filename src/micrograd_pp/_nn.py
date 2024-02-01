@@ -111,6 +111,33 @@ class BatchNorm1d:
         )
 
 
+class Dropout:
+    """Dropout.
+
+    Parameters
+    ----------
+    p
+        Probability of an element to be zeroed
+    gain
+        Scaling multiplier used at test time (if unspecified, it is set to 1 / (1 - p))
+    """
+
+    def __init__(self, p: float, gain: float | None = None) -> None:
+        if p < 0.0 or p > 1.0:
+            msg = "Dropout probability has to be between zero and one"
+            raise ValueError(msg)
+        if gain is None:
+            gain = 1.0 / (1.0 - p)
+        self._gain = gain
+        self._p = p
+
+    def __call__(self, x: Expr) -> Expr:
+        if is_eval():
+            return x
+        mask = Constant(np.random.random(size=x.shape) >= self._p)
+        return x * mask * self._gain
+
+
 class Linear:
     """Linear layer.
 
