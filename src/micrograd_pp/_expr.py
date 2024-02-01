@@ -73,12 +73,12 @@ class Expr:
         args = ", ".join(f"{k}={v}" for k, v in d.items())
         return f"_Expr({args})"
 
-    def __matmul__(self, other: Any) -> Expr:
+    def __matmul__(self, other: Expr) -> Expr:
         return _MatMul(self, other)
 
-    def __add__(self, other: Any) -> Expr:
+    def __add__(self, other: int | float | Expr) -> Expr:
         if isinstance(other, int):
-            other = float(other)
+            return _AddScalar(self, float(other))
         if isinstance(other, float):
             return _AddScalar(self, other)
         return _Add(*_maybe_expand(self, other))
@@ -86,12 +86,12 @@ class Expr:
     def __getitem__(self, index: Any) -> Expr:
         return _Slice(self, index=index)
 
-    def __truediv__(self, other: Any) -> Expr:
+    def __truediv__(self, other: int | float | Expr) -> Expr:
         return self * other ** (-1)
 
-    def __mul__(self, other: Any) -> Expr:
+    def __mul__(self, other: int | float | Expr) -> Expr:
         if isinstance(other, int):
-            other = float(other)
+            return _MultScalar(self, float(other))
         if isinstance(other, float):
             return _MultScalar(self, other)
         return _Mult(*_maybe_expand(self, other))
@@ -99,28 +99,25 @@ class Expr:
     def __neg__(self) -> Expr:
         return self * (-1.0)
 
-    def __pow__(self, pow: Any) -> Expr:
-        if not isinstance(pow, (int, float)):
-            msg = f"Expected int or float exponent; received {pow}"
-            raise ValueError(msg)
+    def __pow__(self, pow: int | float) -> Expr:
         return _Pow(self, pow)
 
-    def __radd__(self, other: Any) -> Expr:
+    def __radd__(self, other: int | float | Expr) -> Expr:
         return self + other
 
-    def __rtruediv__(self, other: Any) -> Expr:
+    def __rtruediv__(self, other: int | float | Expr) -> Expr:
         return self / other
 
-    def __rmatmul__(self, other: Any) -> Expr:
+    def __rmatmul__(self, other: Expr) -> Expr:
         return self @ other
 
-    def __rmul__(self, other: Any) -> Expr:
+    def __rmul__(self, other: int | float | Expr) -> Expr:
         return self * other
 
-    def __rsub__(self, other: Any) -> Expr:
+    def __rsub__(self, other: int | float | Expr) -> Expr:
         return (-self) + other
 
-    def __sub__(self, other: Any) -> Expr:
+    def __sub__(self, other: int | float | Expr) -> Expr:
         return self + (-other)
 
     def _backward(self, grad: npt.NDArray) -> None:
