@@ -52,3 +52,17 @@ def test_batch_norm_1d_eval() -> None:
         y_ = bn(x_)
         # The input should be close to the output since the batch norm scale and shift are 1 and 0 at initialization
         np.testing.assert_allclose(x_.value, y_.value, atol=1e-4, rtol=0.0)
+
+
+@pytest.mark.parametrize("p", [-1.0, 2.0])
+def test_dropout_bad_probabilities(p: float) -> None:
+    with pytest.raises(ValueError):
+        mpp.Dropout(p)
+
+
+def test_dropout_eval() -> None:
+    x = mpp.Constant(np.random.randn(BATCH_SZ, NUM_FEATURES))
+    dropout = mpp.Dropout(0.5)
+    with mpp.eval():
+        y = dropout(x)
+    np.testing.assert_equal(x.value, y.value)
