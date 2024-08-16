@@ -179,7 +179,7 @@ class Linear:
         return retval
 
     def __repr__(self) -> str:
-        return f"Linear({self._a.shape[0]}, {self._a.shape[1]})"
+        return f"Linear({self._a.shape[1]}, {self._a.shape[0]})"
 
 
 class ReLU:
