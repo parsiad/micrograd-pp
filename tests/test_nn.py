@@ -66,3 +66,11 @@ def test_dropout_eval() -> None:
     with mpp.eval():
         y = dropout(x)
     np.testing.assert_equal(x.value, y.value)
+
+
+def test_embedding() -> None:
+    num_embeddings = 10
+    embedding = mpp.Embedding(num_embeddings=num_embeddings, embedding_dim=NUM_FEATURES)
+    x = np.random.randint(low=0, high=num_embeddings, size=(1, 2, 3))
+    y = embedding(x)
+    assert y.shape == x.shape + (NUM_FEATURES,)
