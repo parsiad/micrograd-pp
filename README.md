@@ -25,3 +25,4 @@ sys.path.insert(0, os.path.expanduser("~/micrograd-pp/python"))
 ## Examples
 
 * [Train a simple feedforward neural network on MNIST to classify handwritten digits](https://nbviewer.org/github/parsiad/micrograd-pp/blob/main/examples/mnist.ipynb)
+* [Learn an n-gram model](https://nbviewer.org/github/parsiad/micrograd-pp/blob/main/examples/n-gram.ipynb)
