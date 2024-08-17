@@ -1,8 +1,10 @@
 import contextlib
+import math
 from collections.abc import Callable
 from typing import Any, Generator
 
 import numpy as np
+import numpy.typing as npt
 
 from ._expr import Constant, Expr, Parameter, relu
 from ._util import n_samples
@@ -136,6 +138,26 @@ class Dropout:
             return x
         mask = Constant(np.random.random(size=x.shape) >= self._p)
         return x * mask * self._gain
+
+
+class Embedding:
+    """Lookup table.
+
+    Parameters
+    ----------
+    """
+
+    def __init__(self, num_embeddings: int, embedding_dim: int, label: str | None = None) -> None:
+        self._a = Parameter(
+            math.sqrt(3.0) * (2.0 * np.random.rand(num_embeddings, embedding_dim) - 1.0),
+            label=label,
+        )
+
+    def __call__(self, x: npt.NDArray) -> Expr:
+        return self._a[x]
+
+    def __repr__(self) -> str:
+        return f"Embedding({self._a.shape[0]}, {self._a.shape[1]})"
 
 
 class Linear:
