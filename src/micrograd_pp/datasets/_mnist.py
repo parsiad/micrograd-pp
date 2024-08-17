@@ -20,7 +20,7 @@ def _compute_hash(file_path):
 def _load_array(name: str, hexdigest: str) -> npt.NDArray:
     if not (os.path.exists(f"/tmp/{name}.gz") and _compute_hash(f"/tmp/{name}.gz") == hexdigest):
         sys.stderr.write(f"downloading {name}...\n")
-        urllib.request.urlretrieve(f"http://yann.lecun.com/exdb/mnist/{name}.gz", f"/tmp/{name}.gz")
+        urllib.request.urlretrieve(f"https://github.com/mkolod/MNIST/raw/master/{name}.gz", f"/tmp/{name}.gz")
     with gzip.open(f"/tmp/{name}.gz", "rb") as f_in:
         with open(f"/tmp/{name}", "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
