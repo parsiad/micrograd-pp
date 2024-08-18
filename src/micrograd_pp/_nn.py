@@ -7,6 +7,7 @@ import numpy as np
 import numpy.typing as npt
 
 from ._expr import Constant, Expr, Parameter, relu
+from ._func import softmax
 from ._util import n_samples
 
 
@@ -136,7 +137,7 @@ class Dropout:
     def __call__(self, x: Expr) -> Expr:
         if is_eval():
             return x
-        mask = Constant(np.random.random(size=x.shape) >= self._p)
+        mask = Constant((np.random.random(size=x.shape) >= self._p).astype(x.dtype))
         return x * mask * self._gain
 
 
@@ -202,6 +203,100 @@ class Linear:
 
     def __repr__(self) -> str:
         return f"Linear({self._a.shape[1]}, {self._a.shape[0]})"
+
+
+class MultiheadAttention:  # TODO(parsiad): Finish docstring
+    """Multi-Head Attention as described in [1].
+
+    [1] Vaswani, Ashish; Shazeer, Noam; Parmar, Niki; Uszkoreit, Jakob; Jones, Llion; Gomez, Aidan N; Kaiser, Łukasz;
+        Polosukhin, Illia (2017). "Attention is All you Need" (PDF). Advances in Neural Information Processing Systems.
+        30. Curran Associates, Inc.
+    """
+
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        dropout: float = 0.0,
+        bias: bool = True,
+        kdim: int | None = None,
+        vdim: int | None = None,
+        batch_first: bool = False,
+    ) -> None:
+        if not batch_first:
+            msg = f"{MultiheadAttention.__name__} does not support batch dimension second; set batch_first=True"
+            raise NotImplementedError(msg)
+
+        if embed_dim % num_heads != 0:
+            msg = "Embedding dimension must be divisible by number of heads"
+            raise ValueError(msg)
+        head_dim = embed_dim // num_heads
+        self._num_heads = num_heads
+
+        input_dq = embed_dim
+        input_dk = embed_dim if kdim is None else kdim
+        input_dv = embed_dim if vdim is None else vdim
+
+        dk = head_dim
+        dv = head_dim
+        do = embed_dim
+
+        self._wq = Linear(in_features=input_dq, out_features=num_heads * dk, bias=bias)
+        self._wk = Linear(in_features=input_dk, out_features=num_heads * dk, bias=bias)
+        self._wv = Linear(in_features=input_dv, out_features=num_heads * dv, bias=bias)
+        self._wo = Linear(in_features=num_heads * dv, out_features=do, bias=bias)
+
+        self._dropout = None if dropout == 0.0 else Dropout(dropout)
+
+    def __call__(
+        self,
+        query: Expr,
+        key: Expr,
+        value: Expr,
+        attn_mask: Expr | None = None,
+        average_attn_weights: bool = True,
+    ) -> tuple[Expr, Expr]:
+        if attn_mask is not None and attn_mask.ndim != 2:
+            msg = f"{MultiheadAttention.__name__} only supports two dimensional attention masks"
+            raise NotImplementedError(msg)
+
+        if not (query.ndim == key.ndim == value.ndim == 3):
+            msg = "Expected three dimensional query, key, and value"
+            raise ValueError(msg)
+
+        batch_sz, seq_len, _ = query.shape
+
+        q = query
+        k = key
+        v = value
+
+        # Input projection
+        q_wq = self._wq(q)  # (N, L, h * dk)
+        k_wk = self._wk(k)  # (N, L, h * dk)
+        v_wv = self._wv(v)  # (N, L, h * dv)
+
+        # Introduce separate head dimension
+        q_wq = q_wq.reshape((batch_sz, seq_len, self._num_heads, -1)).transpose(1, 2)  # (N, h, L, dk)
+        k_wk = k_wk.reshape((batch_sz, seq_len, self._num_heads, -1)).transpose(1, 2)  # (N, h, L, dk)
+        v_wv = v_wv.reshape((batch_sz, seq_len, self._num_heads, -1)).transpose(1, 2)  # (N, h, L, dv)
+
+        # Compute each attention head
+        logits = q_wq @ k_wk.transpose(2, 3) / math.sqrt(q_wq.shape[-1])  # (N, h, L, L)
+        if attn_mask is not None:
+            logits = logits + attn_mask
+        attn_output_weights = softmax(logits, dim=3)
+        if self._dropout is not None:
+            attn_output_weights = self._dropout(attn_output_weights)
+        heads = (attn_output_weights @ v_wv).transpose(1, 2)  # (N, L, h, dv)
+        heads = heads.reshape((batch_sz, seq_len, -1))  # (N, L, h * dv)
+
+        # Output projection
+        attn_output = self._wo(heads)
+
+        if average_attn_weights:
+            attn_output_weights = attn_output_weights.mean(dim=1)
+
+        return attn_output, attn_output_weights
 
 
 class ReLU:

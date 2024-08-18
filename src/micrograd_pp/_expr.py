@@ -53,6 +53,9 @@ class Expr:
         label: str | None = None,
         requires_grad: bool | None = None,
     ) -> None:
+        if not np.issubdtype(value.dtype, np.floating):
+            msg = "Expected a floating point expression"
+            raise NotImplementedError(msg)
         self._value = value
         self._label = label
         if is_grad_enabled():
@@ -73,7 +76,32 @@ class Expr:
         return f"_Expr({args})"
 
     def __matmul__(self, other: Expr) -> Expr:
-        return _MatMul(self, other)
+        # Promote vector to matrix
+        a = self
+        a_is_vec = a.ndim == 1
+        if a_is_vec:
+            a = a.unsqueeze(0)
+        b = other
+        b_is_vec = b.ndim == 1
+        if b_is_vec:
+            b = b.unsqueeze(-1)
+
+        # Broadcast
+        shape = np.broadcast_shapes(a.shape[:-2], b.shape[:-2])
+        a_shape = shape + a.shape[-2:]
+        b_shape = shape + b.shape[-2:]
+        a = a if a.shape == a_shape else _Expand(a, shape=a_shape)
+        b = b if b.shape == b_shape else _Expand(b, shape=b_shape)
+
+        c = _MatMul(a, b)
+
+        # Demote
+        if a_is_vec:
+            c = c.squeeze(0)
+        if b_is_vec:
+            c = c.squeeze(-1)
+
+        return c
 
     def __add__(self, other: int | float | Expr) -> Expr:
         if isinstance(other, int):
@@ -247,6 +275,16 @@ class Expr:
             One or more axes to remove. By default, all length one axes are removed.
         """
         return _Squeeze(self, dim=dim)
+
+    def reshape(self, shape: int | tuple[int, ...]) -> Expr:
+        """Reshapes an expression.
+
+        Parameters
+        ----------
+        shape
+            The new shape
+        """
+        return _Reshape(self, shape=shape)
 
     def sum(self, dim: int | tuple[int, ...] | None = None, keepdim: bool = False) -> Expr:
         """Sum across one or more dimensions.
@@ -460,16 +498,14 @@ class _Log(Expr):
 
 class _MatMul(Expr):
     def __init__(self, a: Expr, b: Expr) -> None:
-        if not (a.ndim == 2 and b.ndim == 2):
-            msg = "Matrix multiplication currently only supports 2-D inputs"
-            raise NotImplementedError(msg)
+        assert a.ndim == b.ndim
         super().__init__(value=a._value @ b._value, children=(a, b))
         self._a = a
         self._b = b
 
     def _backward(self, grad: npt.NDArray) -> None:
-        self._a.update_grad(lambda: grad @ self._b._value.T)
-        self._b.update_grad(lambda: self._a._value.T @ grad)
+        self._a.update_grad(lambda: grad @ np.moveaxis(self._b._value, -1, -2))
+        self._b.update_grad(lambda: np.moveaxis(self._a._value, -1, -2) @ grad)
 
 
 class _Max(Expr):
@@ -537,6 +573,15 @@ class _ReLU(Expr):
 
     def _backward(self, grad: npt.NDArray) -> None:
         self._a.update_grad(lambda: grad * (self._a._value > 0.0))
+
+
+class _Reshape(Expr):
+    def __init__(self, a: Expr, shape: int | tuple[int, ...]) -> None:
+        super().__init__(value=a._value.reshape(shape), children=(a,))
+        self._a = a
+
+    def _backward(self, grad: npt.NDArray) -> None:
+        self._a.update_grad(lambda: grad.reshape(self._a.shape))
 
 
 class _Slice(Expr):

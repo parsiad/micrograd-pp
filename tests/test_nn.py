@@ -2,11 +2,13 @@ from typing import Generator
 
 import numpy as np
 import pytest
+import torch
 
 import micrograd_pp as mpp
 
 BATCH_SZ = 64
 NUM_FEATURES = 10
+SEQ_LEN = 5
 
 
 @pytest.fixture(autouse=True)
@@ -74,3 +76,37 @@ def test_embedding() -> None:
     x = np.random.randint(low=0, high=num_embeddings, size=(1, 2, 3))
     y = embedding(x)
     assert y.shape == x.shape + (NUM_FEATURES,)
+
+
+@pytest.mark.parametrize("is_causal", (False, True))
+def test_multihead_attention(is_causal: bool) -> None:  # Test against PyTorch implementation
+    torch_attn_mask = None
+    mpp_attn_mask = None
+    if is_causal:
+        torch_attn_mask = torch.zeros((SEQ_LEN, SEQ_LEN))
+        torch_attn_mask[torch.triu_indices(SEQ_LEN, SEQ_LEN, offset=1)] = -np.inf
+        mpp_attn_mask = mpp.Constant(torch_attn_mask.numpy())
+
+    torch_attn = torch.nn.MultiheadAttention(embed_dim=10, num_heads=2, kdim=20, vdim=30, batch_first=True)
+    named_parameters = dict(torch_attn.named_parameters())
+    torch_wq = named_parameters["q_proj_weight"]
+    torch_wk = named_parameters["k_proj_weight"]
+    torch_wv = named_parameters["v_proj_weight"]
+    torch_wo = named_parameters["out_proj.weight"]
+    torch_q = torch.randn(BATCH_SZ, SEQ_LEN, 10)
+    torch_k = torch.randn(BATCH_SZ, SEQ_LEN, 20)
+    torch_v = torch.randn(BATCH_SZ, SEQ_LEN, 30)
+    torch_attn_output, torch_attn_output_weights = torch_attn(torch_q, torch_k, torch_v, attn_mask=torch_attn_mask)
+
+    mpp_attn = mpp.MultiheadAttention(embed_dim=10, num_heads=2, kdim=20, vdim=30, batch_first=True)
+    mpp_attn._wq._a._value = torch_wq.detach().numpy()
+    mpp_attn._wk._a._value = torch_wk.detach().numpy()
+    mpp_attn._wv._a._value = torch_wv.detach().numpy()
+    mpp_attn._wo._a._value = torch_wo.detach().numpy()
+    mpp_q = mpp.Constant(torch_q.numpy())
+    mpp_k = mpp.Constant(torch_k.numpy())
+    mpp_v = mpp.Constant(torch_v.numpy())
+    mpp_attn_output, mpp_attn_output_weights = mpp_attn(mpp_q, mpp_k, mpp_v, attn_mask=mpp_attn_mask)
+
+    np.testing.assert_allclose(torch_attn_output.detach().numpy(), mpp_attn_output.value, atol=1e-6)
+    np.testing.assert_allclose(torch_attn_output_weights.detach().numpy(), mpp_attn_output_weights.value, atol=1e-6)
