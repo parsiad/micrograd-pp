@@ -108,7 +108,7 @@ class BatchNorm1d:
 
     def __repr__(self) -> str:
         return (
-            f"BatchNorm1d({self._num_features}, x={self._eps=}, momentum={self._momentum}, "
+            f"BatchNorm1d({self._num_features}, eps={self._eps}, momentum={self._momentum}, "
             f"affine={self._scale is not None and self._shift is not None}, "
             f"track_running_stats={self._running_mean is not None and self._running_var is not None})"
         )
