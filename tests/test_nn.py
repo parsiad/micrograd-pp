@@ -78,6 +78,15 @@ def test_embedding() -> None:
     assert y.shape == x.shape + (NUM_FEATURES,)
 
 
+def test_layer_norm() -> None:
+    normalized_shape = (4, 3)
+    x = mpp.Constant(np.random.randn(BATCH_SZ, *normalized_shape))
+    ln = mpp.LayerNorm(normalized_shape, eps=0.0)
+    y = ln(x)
+    np.testing.assert_allclose(y.mean((-1, -2)).value, 0.0, atol=1e-12)
+    np.testing.assert_allclose(y.var((-1, -2)).value, 1.0)
+
+
 @pytest.mark.parametrize("is_causal", (False, True))
 def test_multihead_attention(is_causal: bool) -> None:  # Test against PyTorch implementation
     torch_attn_mask = None

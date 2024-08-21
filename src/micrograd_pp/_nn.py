@@ -161,6 +161,59 @@ class Embedding:
         return f"Embedding({self._a.shape[0]}, {self._a.shape[1]})"
 
 
+class LayerNorm:
+    """Layer normalization.
+
+    Parameters
+    ----------
+    normalized_shape
+        Shape of the last D dimensions to normalize over where D is the dimension of normalized_shape (if an integer is
+        specified, it will be promoted to a singleton tuple)
+    bias
+        Whether or not to learn a bias (ignored if elementwise_affine is False)
+    dtype
+        Data type for running mean and variance and scale and shift parameters
+    elementwise_affine
+        Whether to use learnable scale and shift parameters
+    eps
+        When standardizing, this quantity is added to the denominator for numerical stability
+    """
+
+    def __init__(
+        self,
+        normalized_shape: int | tuple[int, ...],
+        bias: bool = True,
+        dtype: type = np.float32,
+        elementwise_affine: bool = True,
+        eps: float = 1e-5,
+    ) -> None:
+        if not elementwise_affine and bias:
+            msg = f"{LayerNorm.__name__} does not support learnable bias without a learnable scale"
+            raise ValueError(msg)
+        self._eps = eps
+        self._scale = Parameter(np.ones(normalized_shape, dtype=dtype)) if elementwise_affine else None
+        self._shift = Parameter(np.zeros(normalized_shape, dtype=dtype)) if bias else None
+        self._normalized_shape = (normalized_shape,) if isinstance(normalized_shape, int) else normalized_shape
+
+    def __call__(self, x: Expr) -> Expr:
+        dims = tuple(range(-len(self._normalized_shape), 0))
+        mean = x.mean(dims, keepdim=True)
+        var = x.var(dims, keepdim=True)
+        retval = (x - mean) / ((var + self._eps) ** 0.5)
+        if self._scale is not None:
+            retval = self._scale * retval
+        if self._shift is not None:
+            retval = retval + self._shift
+        return retval
+
+    def __repr__(self) -> str:
+        return (
+            f"LayerNorm({self._normalized_shape}, eps={self._eps=}, "
+            f"elementwise_affine={self._scale is not None}, "
+            f"bias={self._shift is not None})"
+        )
+
+
 class Linear:
     """Linear layer.
 
