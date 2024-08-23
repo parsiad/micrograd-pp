@@ -2,7 +2,6 @@ from typing import Generator
 
 import numpy as np
 import pytest
-import torch
 
 import micrograd_pp as mpp
 
@@ -88,7 +87,10 @@ def test_layer_norm() -> None:
 
 
 @pytest.mark.parametrize("is_causal", (False, True))
+@pytest.mark.skipif(not pytest.importorskip("torch"), reason="Unable to import torch")
 def test_multihead_attention(is_causal: bool) -> None:  # Test against PyTorch implementation
+    import torch
+
     torch_attn_mask = None
     mpp_attn_mask = None
     if is_causal:
