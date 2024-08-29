@@ -1,7 +1,8 @@
-import numpy as np
 import pytest
 
 import micrograd_pp as mpp
+
+np = mpp.numpy
 
 
 @pytest.mark.skipif(not pytest.importorskip("scipy.special"), reason="Unable to import scipy.special")

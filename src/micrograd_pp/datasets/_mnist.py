@@ -5,8 +5,9 @@ import shutil
 import sys
 import urllib.request
 
-import numpy as np
 import numpy.typing as npt
+
+from .._numpy import numpy as np
 
 
 def _compute_hash(file_path):

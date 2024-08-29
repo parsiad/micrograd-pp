@@ -1,8 +1,8 @@
 from typing import Sequence
 
-import numpy as np
 import numpy.typing as npt
 
+from ._numpy import numpy as np
 from ._expr import Expr
 
 

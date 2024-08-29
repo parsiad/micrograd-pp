@@ -3,10 +3,10 @@ import math
 from collections.abc import Callable
 from typing import Any, Generator
 
-import numpy as np
 import numpy.typing as npt
 
 from ._expr import Constant, Expr, Parameter, relu
+from ._numpy import numpy as np
 from ._func import softmax
 from ._util import n_samples
 
