@@ -1,9 +1,10 @@
 from typing import Generator
 
-import numpy as np
 import pytest
 
 import micrograd_pp as mpp
+
+np = mpp.numpy
 
 BATCH_SZ = 64
 NUM_FEATURES = 10

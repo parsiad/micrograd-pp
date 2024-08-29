@@ -13,6 +13,7 @@ from ._nn import (
     eval,
     is_eval,
 )
+from ._numpy import numpy
 from ._opt import SGD
 
 from . import datasets
@@ -38,6 +39,7 @@ __all__ = (
     "is_eval",
     "is_grad_enabled",
     "maximum",
+    "numpy",
     "no_grad",
     "relu",
     "softmax",

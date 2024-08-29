@@ -6,9 +6,9 @@ from abc import ABC, abstractmethod
 from collections import deque
 from typing import Any, Callable, Generator, Sequence
 
-import numpy as np
 import numpy.typing as npt
 
+from ._numpy import numpy as np
 from ._util import n_samples
 
 

@@ -1,10 +1,11 @@
 import itertools
 from typing import Generator
 
-import numpy as np
 import pytest
 
 import micrograd_pp as mpp
+
+np = mpp.numpy
 
 DIMS = [0, 1, 2, (0, 1), (0, 2), (1, 2), (0, 1, 2), None]
 
