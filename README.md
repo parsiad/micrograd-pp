@@ -6,7 +6,7 @@
 <a href="https://github.com/parsiad/micrograd-pp"><img alt="GitHub" src="https://img.shields.io/badge/github-%23121011.svg?logo=github"></a>
 
 Micrograd++ is a minimalistic wrapper around NumPy which adds support for automatic differentiation.
-Designed as a learning tool, Micrograd++ provides an accessible entry point for those interested in understanding automatic differentiation and backpropagation or seeking a clean, educational resource.
+It also provides various composable classes ("layers") and other tools to simplify building neural networks.
 
 Micrograd++ draws inspiration from Andrej Karpathy's awesome [micrograd](https://github.com/karpathy/micrograd) library, prioritizing simplicity and readability over speed.
 Unlike micrograd, which tackles scalar inputs, Micrograd++ supports tensor inputs (specifically, NumPy arrays).
