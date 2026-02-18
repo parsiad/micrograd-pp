@@ -14,12 +14,13 @@ from ._nn import (
     is_eval,
 )
 from ._numpy import numpy
-from ._opt import SGD
+from ._opt import AdamW, SGD
 
 from . import datasets
 
 __all__ = (
     "BatchNorm1d",
+    "AdamW",
     "Constant",
     "Dropout",
     "Embedding",

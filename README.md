@@ -43,5 +43,5 @@ sys.path.insert(0, os.path.expanduser("~/micrograd-pp/python"))
   * ☒ ReLU
   * ☒ Sequential
 * **Optimizers**
-  * ☐ Adam
+  * ☒ AdamW
   * ☒ Stochastic Gradient Descent (SGD)
