@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import contextlib
+import functools
 import itertools
 from abc import ABC, abstractmethod
 from collections import deque
-from typing import Any, Callable, Generator, Sequence
+from typing import Any, Callable, Generator, Iterable, Sequence
 
 import numpy.typing as npt
 
@@ -150,6 +151,7 @@ class Expr:
     def _backward(self, grad: npt.NDArray) -> None:
         del grad
 
+    @functools.lru_cache(maxsize=1)  # Cache for when loss.params is called multiple times
     def _get_nodes(self) -> deque[Expr]:
         retval: deque[Expr] = deque()
         if not self._requires_grad:
@@ -174,6 +176,10 @@ class Expr:
 
         visit(self)
         return retval
+
+    @property
+    def params(self) -> list[Expr]:
+        return [node for node in self._get_nodes() if len(node._children) == 0]
 
     def backward(
         self,
@@ -214,7 +220,7 @@ class Expr:
             if not retain_grad:
                 node._grad = None
         if opt is not None:
-            opt.step()
+            opt.update_state()
 
     def exp(self) -> Expr:
         """Return the element-wise exponential."""
@@ -356,6 +362,9 @@ class Expr:
             retval = _Squeeze(retval, dim=dim)
         return retval
 
+    def zero_grad(self) -> None:
+        self._grad = None
+
     @property
     def dtype(self) -> npt.DTypeLike:
         """Data type."""
@@ -390,13 +399,23 @@ class Expr:
         return self._value.shape
 
 
+def zero_grads(params: Iterable[Expr]) -> None:
+    for param in params:
+        param.zero_grad()
+
+
 class Opt(ABC):
+    def step(self, params: Iterable[Expr]) -> None:
+        for param in params:
+            self.update_param(param)
+        self.update_state()
+
     @abstractmethod
     def update_param(self, param: Expr) -> None:
         pass
 
     @abstractmethod
-    def step(self) -> None:
+    def update_state(self) -> None:
         pass
 
 

@@ -17,7 +17,7 @@ class SGD(Opt):
     def update_param(self, param: Expr) -> None:
         param.update_value(-self._lr * param.grad)
 
-    def step(self) -> None:
+    def update_state(self) -> None:
         pass
 
 
@@ -79,7 +79,7 @@ class AdamW(Opt):
         self._moments: dict[Expr, tuple[np.ndarray, np.ndarray]] = {}
 
         self._t = 0
-        self.step()
+        self.update_state()
 
     def update_param(self, param: Expr) -> None:
         if param not in self._moments:
@@ -95,7 +95,7 @@ class AdamW(Opt):
         update = -self._lr * (corrected_moment_1 / denom + self._weight_decay * param.value)
         param.update_value(update)
 
-    def step(self):
+    def update_state(self):
         self._t += 1
         self._bias_correction_1 = 1.0 - self._beta_1**self._t
         self._bias_correction_2 = 1.0 - self._beta_2**self._t

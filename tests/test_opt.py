@@ -12,14 +12,17 @@ def run_before_and_after_tests():
 
 
 @pytest.mark.parametrize(
-    ("opt_factory", "num_steps", "atol"),
+    ("opt_factory", "num_steps", "atol", "pass_opt_to_backward"),
     [
-        (lambda: mpp.SGD(lr=0.1), 150, 1e-8),
-        (lambda: mpp.AdamW(lr=0.2, weight_decay=0.0), 600, 1e-8),
+        (*cfg, pass_opt_to_backward)
+        for cfg in (
+            (lambda: mpp.SGD(lr=0.1), 150, 1e-8),
+            (lambda: mpp.AdamW(lr=0.2, weight_decay=0.0), 600, 1e-8),
+        )
+        for pass_opt_to_backward in (False, True)
     ],
-    ids=("sgd", "adamw"),
 )
-def test_mse(opt_factory, num_steps: int, atol: float):
+def test_mse(opt_factory, num_steps: int, atol: float, pass_opt_to_backward: bool):
     n = 10
     coef = np.random.randn(3, 1)
     coef_hat = np.random.randn(3, 1)
@@ -35,6 +38,11 @@ def test_mse(opt_factory, num_steps: int, atol: float):
     for _ in range(num_steps):
         y_pred_ = x_ @ coef_hat_
         mse = ((y_pred_ - y_) ** 2).sum() / n
-        mse.backward(opt=opt)
+        if pass_opt_to_backward:
+            mse.backward(opt=opt)  # Automatically handles zeroing gradients and updating the optimizer state
+        else:
+            mpp.zero_grads(mse.params)
+            mse.backward()
+            opt.step(mse.params)
 
     np.testing.assert_allclose(coef, coef_hat, rtol=0.0, atol=atol)

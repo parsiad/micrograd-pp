@@ -1,4 +1,4 @@
-from ._expr import Constant, Expr, Parameter, is_grad_enabled, maximum, no_grad, relu
+from ._expr import Constant, Expr, Parameter, is_grad_enabled, maximum, no_grad, relu, zero_grads
 from ._func import cat, cross_entropy_loss, softmax
 from ._nn import (
     BatchNorm1d,
@@ -44,4 +44,5 @@ __all__ = (
     "no_grad",
     "relu",
     "softmax",
+    "zero_grads",
 )
