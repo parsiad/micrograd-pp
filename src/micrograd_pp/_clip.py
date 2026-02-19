@@ -44,7 +44,7 @@ def clip_grad_norm_(
     max_norm
         Maximum allowed norm
     norm_type
-        Type of p-norm to use. Supports ``math.inf`` for infinity norm.
+        Type of p-norm to use (use ``float("inf")`` for infinity norm)
     error_if_nonfinite
         If True, raises if the total norm is NaN or infinite
     eps
