@@ -42,7 +42,7 @@ def test_mnist(batch_sz: int = 64, n_epochs: int = 3):
     train_labels = np.split(train_labels, n_batches)
 
     # Optimizer
-    opt = mpp.SGD(lr=0.01)
+    opt = mpp.AdamW(lr=0.001)
 
     # Feedforward neural network
     model = mpp.Sequential(
