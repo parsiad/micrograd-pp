@@ -35,13 +35,22 @@ sys.path.insert(0, os.path.expanduser("~/micrograd-pp/python"))
   * ☒ GPU support
 * **Layers**
   * ☒ BatchNorm1d
+  * ☐ Conv2d
+  * ☐ ConvTranspose2d
   * ☒ Dropout
   * ☒ Embedding
+  * ☐ GroupNorm
   * ☒ LayerNorm
   * ☒ Linear
+  * ☐ MaxPool2d
   * ☒ MultiheadAttention
   * ☒ ReLU
   * ☒ Sequential
+  * ☐ Upsample
 * **Optimizers**
   * ☒ AdamW
   * ☒ Stochastic Gradient Descent (SGD)
+* **Training**
+  * ☐ Exponential moving average (EMA) of model weights
+  * ☐ Gradient clipping
+  * ☐ Learning rate schedules
