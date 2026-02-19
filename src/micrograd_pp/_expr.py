@@ -213,6 +213,8 @@ class Expr:
                 opt.update_param(node)
             if not retain_grad:
                 node._grad = None
+        if opt is not None:
+            opt.step()
 
     def exp(self) -> Expr:
         """Return the element-wise exponential."""

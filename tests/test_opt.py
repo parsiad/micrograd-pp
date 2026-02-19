@@ -36,6 +36,5 @@ def test_mse(opt_factory, num_steps: int, atol: float):
         y_pred_ = x_ @ coef_hat_
         mse = ((y_pred_ - y_) ** 2).sum() / n
         mse.backward(opt=opt)
-        opt.step()
 
     np.testing.assert_allclose(coef, coef_hat, rtol=0.0, atol=atol)

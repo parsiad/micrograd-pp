@@ -60,7 +60,6 @@ def test_mnist(batch_sz: int = 64, n_epochs: int = 3):
             y = train_labels[batch_index]
             loss = cross_entropy_loss(model(x), y)
             loss.backward(opt=opt)
-            opt.step()
         test_x = mpp.Constant(test_images)
         with mpp.eval(), mpp.no_grad():
             test_fx = model(test_x)
