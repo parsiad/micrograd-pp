@@ -1,5 +1,6 @@
 from ._expr import Constant, Expr, Parameter, is_grad_enabled, maximum, no_grad, relu, zero_grads
 from ._func import cat, cross_entropy_loss, softmax
+from ._clip import clip_grad_norm_, clip_grad_value_
 from ._nn import (
     BatchNorm1d,
     Dropout,
@@ -34,6 +35,8 @@ __all__ = (
     "Sequential",
     "SGD",
     "cat",
+    "clip_grad_norm_",
+    "clip_grad_value_",
     "cross_entropy_loss",
     "datasets",
     "eval",

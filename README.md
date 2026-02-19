@@ -52,5 +52,5 @@ sys.path.insert(0, os.path.expanduser("~/micrograd-pp/python"))
   * ☒ Stochastic Gradient Descent (SGD)
 * **Training**
   * ☐ Exponential moving average (EMA) of model weights
-  * ☐ Gradient clipping
+  * ☒ Gradient clipping
   * ☐ Learning rate schedules
