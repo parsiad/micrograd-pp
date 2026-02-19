@@ -49,6 +49,8 @@ class BatchNorm1d:
         Momentum used for the running mean and variance computations (if None, an ordinary average is computed)
     track_running_stats
         Whether to keep a running mean and variance
+    label
+        Human-readable name
     """
 
     def __init__(
@@ -59,6 +61,7 @@ class BatchNorm1d:
         eps: float = 1e-5,
         momentum: float | None = 0.1,
         track_running_stats: bool = True,
+        label: str | None = None,
     ) -> None:
         self._eps = eps
         self._momentum = momentum
@@ -70,8 +73,12 @@ class BatchNorm1d:
             self._running_mean = None
             self._running_var = None
         if affine:
-            self._scale = Parameter(np.ones((num_features,), dtype=dtype))
-            self._shift = Parameter(np.zeros((num_features,), dtype=dtype))
+            self._scale = Parameter(
+                np.ones((num_features,), dtype=dtype), label=None if label is None else f"{label}/scale"
+            )
+            self._shift = Parameter(
+                np.zeros((num_features,), dtype=dtype), label=None if label is None else f"{label}/shift"
+            )
         else:
             self._scale = None
             self._shift = None
@@ -177,6 +184,8 @@ class LayerNorm:
         Whether to use learnable scale and shift parameters
     eps
         When standardizing, this quantity is added to the denominator for numerical stability
+    label
+        Human-readable name
     """
 
     def __init__(
@@ -186,13 +195,22 @@ class LayerNorm:
         dtype: type = np.float32,
         elementwise_affine: bool = True,
         eps: float = 1e-5,
+        label: str | None = None,
     ) -> None:
         if not elementwise_affine and bias:
             msg = f"{LayerNorm.__name__} does not support learnable bias without a learnable scale"
             raise ValueError(msg)
         self._eps = eps
-        self._scale = Parameter(np.ones(normalized_shape, dtype=dtype)) if elementwise_affine else None
-        self._shift = Parameter(np.zeros(normalized_shape, dtype=dtype)) if bias else None
+        self._scale = (
+            Parameter(np.ones(normalized_shape, dtype=dtype), label=None if label is None else f"{label}/scale")
+            if elementwise_affine
+            else None
+        )
+        self._shift = (
+            Parameter(np.zeros(normalized_shape, dtype=dtype), label=None if label is None else f"{label}/shift")
+            if bias
+            else None
+        )
         self._normalized_shape = (normalized_shape,) if isinstance(normalized_shape, int) else normalized_shape
 
     def __call__(self, x: Expr) -> Expr:
