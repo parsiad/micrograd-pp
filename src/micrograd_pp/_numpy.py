@@ -1,4 +1,5 @@
 import os
+import platform
 import subprocess
 
 
@@ -7,6 +8,22 @@ def _cuda_is_available() -> bool:
     try:
         result = subprocess.run(["nvidia-smi"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         return "CUDA" in result.stdout.decode()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return False
+
+
+def _metal_is_available() -> bool:
+    if platform.system() != "Darwin":
+        return False
+    try:
+        p = subprocess.run(
+            ["/usr/sbin/system_profiler", "SPDisplaysDataType"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+        )
+        return "Metal Support" in p.stdout
     except (FileNotFoundError, subprocess.CalledProcessError):
         return False
 
