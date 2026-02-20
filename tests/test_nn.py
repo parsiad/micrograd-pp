@@ -56,6 +56,50 @@ def test_batch_norm_1d_eval() -> None:
         np.testing.assert_allclose(x_.value, y_.value, atol=1e-4, rtol=0.0)
 
 
+@pytest.mark.skipif(not pytest.importorskip("torch"), reason="Unable to import torch")
+def test_conv2d() -> None:  # Test against PyTorch implementation
+    import torch
+
+    torch_x = torch.randn((2, 3, 7, 8), dtype=torch.float64, requires_grad=True)
+    torch_conv = torch.nn.Conv2d(
+        in_channels=3,
+        out_channels=4,
+        kernel_size=(3, 2),
+        stride=(2, 1),
+        padding=(1, 2),
+        dilation=(1, 2),
+        bias=True,
+        dtype=torch.float64,
+    )
+
+    torch_y = torch_conv(torch_x)
+    torch_loss = (torch_y * torch_y).sum()
+    torch_loss.backward()
+
+    mpp_conv = mpp.Conv2d(
+        in_channels=3,
+        out_channels=4,
+        kernel_size=(3, 2),
+        stride=(2, 1),
+        padding=(1, 2),
+        dilation=(1, 2),
+        bias=True,
+    )
+    mpp_conv._a._value = torch_conv.weight.detach().numpy()
+    assert mpp_conv._b is not None
+    mpp_conv._b._value = torch_conv.bias.detach().numpy()
+
+    mpp_x = mpp.Parameter(torch_x.detach().numpy())
+    mpp_y = mpp_conv(mpp_x)
+    mpp_loss = (mpp_y * mpp_y).sum()
+    mpp_loss.backward()
+
+    np.testing.assert_allclose(mpp_y.value, torch_y.detach().numpy(), atol=1e-10, rtol=0.0)
+    np.testing.assert_allclose(mpp_x.grad, torch_x.grad.detach().numpy(), atol=1e-10, rtol=0.0)
+    np.testing.assert_allclose(mpp_conv._a.grad, torch_conv.weight.grad.detach().numpy(), atol=1e-10, rtol=0.0)
+    np.testing.assert_allclose(mpp_conv._b.grad, torch_conv.bias.grad.detach().numpy(), atol=1e-10, rtol=0.0)
+
+
 @pytest.mark.parametrize("p", [-1.0, 2.0])
 def test_dropout_bad_probabilities(p: float) -> None:
     with pytest.raises(ValueError):

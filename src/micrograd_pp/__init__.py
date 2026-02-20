@@ -3,6 +3,7 @@ from ._func import cat, cross_entropy_loss, softmax
 from ._clip import clip_grad_norm_, clip_grad_value_
 from ._nn import (
     BatchNorm1d,
+    Conv2d,
     Dropout,
     Embedding,
     LayerNorm,
@@ -23,6 +24,7 @@ __all__ = (
     "BatchNorm1d",
     "AdamW",
     "Constant",
+    "Conv2d",
     "Dropout",
     "Embedding",
     "Expr",

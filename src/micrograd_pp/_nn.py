@@ -7,7 +7,7 @@ import numpy.typing as npt
 
 from ._expr import Constant, Expr, Parameter, relu
 from ._numpy import numpy as np
-from ._func import softmax
+from ._func import cat, softmax
 from ._util import n_samples
 
 
@@ -118,6 +118,143 @@ class BatchNorm1d:
             f"BatchNorm1d({self._num_features}, eps={self._eps}, momentum={self._momentum}, "
             f"affine={self._scale is not None and self._shift is not None}, "
             f"track_running_stats={self._running_mean is not None and self._running_var is not None})"
+        )
+
+
+class Conv2d:
+    """2D convolution over an input image composed of several input planes.
+
+    Expects an input tensor of shape (N, C_in, H_in, W_in).
+    Produces an output tensor of shape (N, C_out, H_out, W_out).
+
+    Conv2D conventions are easiest to understand with an example.
+    Consider a convolution with kernel size 4x3, dilation 2x5, and stride 6x7.
+    The first patch has coordinates
+    ```
+    [(0,0), (0,5), (0,10),
+     (2,0), (2,5), (2,10),
+     (4,0), (4,5), (4,10),
+     (6,0), (6,5), (6,10)]
+    ```
+    The second patch has coordinates
+    ```
+    [(0,7), (0,12), (0,17),
+     (2,7), (2,12), (2,17),
+     (4,7), (4,12), (4,17),
+     (6,7), (6,12), (6,17)]
+    ```
+
+    Parameters
+    ----------
+    in_channels
+        Number of channels in the input image
+    out_channels
+        Number of channels produced by the convolution
+    kernel_size
+        Size of the convolving kernel
+    stride
+        Controls how far the kernel moves across the image from one position to the next
+    padding
+        Controls the amount of implicit zero-padding on both sides of the input
+    dilation
+        Controls how far apart the kernel elements are spaced from one position to the next within the kernel
+    bias
+        Whether or not to include a bias
+    label
+        Human-readable name
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int | tuple[int, int],
+        stride: int | tuple[int, int] = 1,
+        padding: int | tuple[int, int] = 0,
+        dilation: int | tuple[int, int] = 1,
+        bias: bool = True,
+        label: str | None = None,
+    ) -> None:
+        self._in_channels = in_channels
+        self._out_channels = out_channels
+        self._kernel_size = (kernel_size, kernel_size) if isinstance(kernel_size, int) else kernel_size
+        self._stride = (stride, stride) if isinstance(stride, int) else stride
+        self._padding = (padding, padding) if isinstance(padding, int) else padding
+        self._dilation = (dilation, dilation) if isinstance(dilation, int) else dilation
+
+        if min(*self._stride) < 1:
+            msg = "Stride must be positive"
+            raise ValueError(msg)
+        if min(*self._dilation) < 1:
+            msg = "Dilation must be positive"
+            raise ValueError(msg)
+
+        std = 1.0 / math.sqrt(in_channels * math.prod(self._kernel_size))
+        self._a = Parameter(
+            std * np.random.randn(out_channels, in_channels, *self._kernel_size),
+            label=None if label is None else f"{label}/weight",
+        )
+        if bias:
+            self._b = Parameter(
+                np.zeros((out_channels,)),
+                label=None if label is None else f"{label}/bias",
+            )
+        else:
+            self._b = None
+
+    def _pad(self, x: Expr) -> Expr:
+        pad_h, pad_w = self._padding
+        if pad_h == 0 and pad_w == 0:
+            return x
+
+        n, c, _, _ = x.shape
+
+        if pad_w != 0:
+            z = Constant(np.zeros((n, c, x.shape[2], pad_w), dtype=x.dtype))
+            x = cat((z, x, z), dim=3)
+
+        if pad_h != 0:
+            z = Constant(np.zeros((n, c, pad_h, x.shape[3]), dtype=x.dtype))
+            x = cat((z, x, z), dim=2)
+
+        return x
+
+    def __call__(self, x: Expr) -> Expr:
+        x = self._pad(x)
+        n, _, h, w = x.shape
+
+        kernel_h, kernel_w = self._kernel_size
+        stride_h, stride_w = self._stride
+        dilation_h, dilation_w = self._dilation
+
+        support_h = dilation_h * (kernel_h - 1) + 1
+        support_w = dilation_w * (kernel_w - 1) + 1
+
+        out_h = 1 + (h - support_h) // stride_h
+        out_w = 1 + (w - support_w) // stride_w
+
+        w_flat = self._a.reshape((self._out_channels, -1)).transpose(0, 1)
+        outputs = []
+        for i in range(out_h):
+            h_lo = i * stride_h
+            h_hi = h_lo + support_h
+            for j in range(out_w):
+                w_lo = j * stride_w
+                w_hi = w_lo + support_w
+                patch = x[:, :, h_lo:h_hi:dilation_h, w_lo:w_hi:dilation_w]
+                patch = patch.reshape((n, -1))
+                y_ij = patch @ w_flat
+                if self._b is not None:
+                    y_ij = y_ij + self._b
+                outputs.append(y_ij.unsqueeze(1))
+
+        return cat(outputs, dim=1).reshape((n, out_h, out_w, self._out_channels)).transpose(1, 3).transpose(2, 3)
+
+    def __repr__(self) -> str:
+        return (
+            f"Conv2d({self._in_channels}, {self._out_channels}, kernel_size={self._kernel_size}, "
+            f"stride={self._stride}, padding={self._padding}, dilation={self._dilation}, "
+            f"bias={self._b is not None})"
         )
 
 
