@@ -40,7 +40,7 @@ def _get_env_as_int(name: str, default: int = 0) -> int:
 
 if _get_env_as_int("MPP_GPU", default=_cuda_is_available()):
     try:
-        import cupy as np
+        import cupy as np  # type: ignore
     except ImportError:
         import numpy as np
 else:
