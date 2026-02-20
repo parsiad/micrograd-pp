@@ -32,6 +32,50 @@ def is_eval() -> bool:
     return _eval_mode
 
 
+def _broadcast_pair(value: int | tuple[int, int]) -> tuple[int, int]:
+    if isinstance(value, int):
+        return value, value
+    return value
+
+
+def _pad_2d(x: Expr, padding: tuple[int, int], fill_value: float) -> Expr:
+    pad_h, pad_w = padding
+    if pad_h == 0 and pad_w == 0:
+        return x
+
+    n, c, _, _ = x.shape
+
+    if pad_w != 0:
+        z = Constant(np.full((n, c, x.shape[2], pad_w), fill_value, dtype=x.dtype))
+        x = cat((z, x, z), dim=3)
+
+    if pad_h != 0:
+        z = Constant(np.full((n, c, pad_h, x.shape[3]), fill_value, dtype=x.dtype))
+        x = cat((z, x, z), dim=2)
+
+    return x
+
+
+def _validate_conv2d_parameters(
+    kernel_size: tuple[int, int],
+    stride: tuple[int, int],
+    padding: tuple[int, int],
+    dilation: tuple[int, int],
+) -> None:
+    if min(*kernel_size) < 1:
+        msg = "Kernel size must be positive"
+        raise ValueError(msg)
+    if min(*stride) < 1:
+        msg = "Stride must be positive"
+        raise ValueError(msg)
+    if min(*padding) < 0:
+        msg = "Padding must be nonnegative"
+        raise ValueError(msg)
+    if min(*dilation) < 1:
+        msg = "Dilation must be positive"
+        raise ValueError(msg)
+
+
 class BatchNorm1d:
     """Batch normalization.
 
@@ -155,7 +199,7 @@ class Conv2d:
     stride
         Controls how far the kernel moves across the image from one position to the next
     padding
-        Controls the amount of implicit zero-padding on both sides of the input
+        Controls the amount of zero-padding on both sides of the input
     dilation
         Controls how far apart the kernel elements are spaced from one position to the next within the kernel
     bias
@@ -177,17 +221,16 @@ class Conv2d:
     ) -> None:
         self._in_channels = in_channels
         self._out_channels = out_channels
-        self._kernel_size = (kernel_size, kernel_size) if isinstance(kernel_size, int) else kernel_size
-        self._stride = (stride, stride) if isinstance(stride, int) else stride
-        self._padding = (padding, padding) if isinstance(padding, int) else padding
-        self._dilation = (dilation, dilation) if isinstance(dilation, int) else dilation
-
-        if min(*self._stride) < 1:
-            msg = "Stride must be positive"
-            raise ValueError(msg)
-        if min(*self._dilation) < 1:
-            msg = "Dilation must be positive"
-            raise ValueError(msg)
+        self._kernel_size = _broadcast_pair(kernel_size)
+        self._stride = _broadcast_pair(stride)
+        self._padding = _broadcast_pair(padding)
+        self._dilation = _broadcast_pair(dilation)
+        _validate_conv2d_parameters(
+            kernel_size=self._kernel_size,
+            stride=self._stride,
+            padding=self._padding,
+            dilation=self._dilation,
+        )
 
         std = 1.0 / math.sqrt(in_channels * math.prod(self._kernel_size))
         self._a = Parameter(
@@ -202,25 +245,8 @@ class Conv2d:
         else:
             self._b = None
 
-    def _pad(self, x: Expr) -> Expr:
-        pad_h, pad_w = self._padding
-        if pad_h == 0 and pad_w == 0:
-            return x
-
-        n, c, _, _ = x.shape
-
-        if pad_w != 0:
-            z = Constant(np.zeros((n, c, x.shape[2], pad_w), dtype=x.dtype))
-            x = cat((z, x, z), dim=3)
-
-        if pad_h != 0:
-            z = Constant(np.zeros((n, c, pad_h, x.shape[3]), dtype=x.dtype))
-            x = cat((z, x, z), dim=2)
-
-        return x
-
     def __call__(self, x: Expr) -> Expr:
-        x = self._pad(x)
+        x = _pad_2d(x, padding=self._padding, fill_value=0.0)
         n, _, h, w = x.shape
 
         kernel_h, kernel_w = self._kernel_size
@@ -411,6 +437,76 @@ class Linear:
 
     def __repr__(self) -> str:
         return f"Linear({self._a.shape[1]}, {self._a.shape[0]})"
+
+
+class MaxPool2d:
+    """2D max pooling over an input image composed of several input planes.
+
+    Expects an input tensor of shape (N, C, H_in, W_in).
+    Produces an output tensor of shape (N, C, H_out, W_out).
+
+    Parameters
+    ----------
+    kernel_size
+        Size of the pooling window
+    stride
+        Controls how far the pooling window moves across the image from one position to the next
+    padding
+        Controls the amount of padding (negative infinity) on both sides of the input
+    dilation
+        Controls how far apart the sampled image elements are spaced from one position to the next within the window
+    """
+
+    def __init__(
+        self,
+        kernel_size: int | tuple[int, int],
+        stride: int | tuple[int, int] | None = None,
+        padding: int | tuple[int, int] = 0,
+        dilation: int | tuple[int, int] = 1,
+    ) -> None:
+        self._kernel_size = _broadcast_pair(kernel_size)
+        self._stride = self._kernel_size if stride is None else _broadcast_pair(stride)
+        self._padding = _broadcast_pair(padding)
+        self._dilation = _broadcast_pair(dilation)
+        _validate_conv2d_parameters(
+            kernel_size=self._kernel_size,
+            stride=self._stride,
+            padding=self._padding,
+            dilation=self._dilation,
+        )
+
+    def __call__(self, x: Expr) -> Expr:
+        x = _pad_2d(x, padding=self._padding, fill_value=-np.inf)
+        n, c, h, w = x.shape
+
+        kernel_h, kernel_w = self._kernel_size
+        stride_h, stride_w = self._stride
+        dilation_h, dilation_w = self._dilation
+
+        support_h = dilation_h * (kernel_h - 1) + 1
+        support_w = dilation_w * (kernel_w - 1) + 1
+
+        out_h = 1 + (h - support_h) // stride_h
+        out_w = 1 + (w - support_w) // stride_w
+
+        outputs = []
+        for i in range(out_h):
+            h_lo = i * stride_h
+            h_hi = h_lo + support_h
+            for j in range(out_w):
+                w_lo = j * stride_w
+                w_hi = w_lo + support_w
+                patch = x[:, :, h_lo:h_hi:dilation_h, w_lo:w_hi:dilation_w]
+                y_ij = patch.max(dim=(2, 3))
+                outputs.append(y_ij.unsqueeze(1))
+
+        return cat(outputs, dim=1).reshape((n, out_h, out_w, c)).transpose(1, 3).transpose(2, 3)
+
+    def __repr__(self) -> str:
+        return (
+            f"MaxPool2d(kernel_size={self._kernel_size}, stride={self._stride}, "
+            f"padding={self._padding}, dilation={self._dilation})"
+        )
 
 
 class MultiheadAttention:  # TODO(parsiad): Finish docstring

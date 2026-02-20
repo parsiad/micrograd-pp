@@ -42,7 +42,7 @@ sys.path.insert(0, os.path.expanduser("~/micrograd-pp/python"))
   * ☐ GroupNorm
   * ☒ LayerNorm
   * ☒ Linear
-  * ☐ MaxPool2d
+  * ☒ MaxPool2d
   * ☒ MultiheadAttention
   * ☒ ReLU
   * ☒ Sequential
@@ -54,3 +54,4 @@ sys.path.insert(0, os.path.expanduser("~/micrograd-pp/python"))
   * ☐ Exponential moving average (EMA) of model weights
   * ☒ Gradient clipping
   * ☐ Learning rate schedules
+

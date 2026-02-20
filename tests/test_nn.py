@@ -76,6 +76,11 @@ def test_conv2d() -> None:  # Test against PyTorch implementation
     torch_loss = (torch_y * torch_y).sum()
     torch_loss.backward()
 
+    assert torch_conv.bias is not None
+    assert torch_x.grad is not None
+    assert torch_conv.weight.grad is not None
+    assert torch_conv.bias.grad is not None
+
     mpp_conv = mpp.Conv2d(
         in_channels=3,
         out_channels=4,
@@ -129,6 +134,53 @@ def test_layer_norm() -> None:
     y = ln(x)
     np.testing.assert_allclose(y.mean((-1, -2)).value, 0.0, atol=1e-12)
     np.testing.assert_allclose(y.var((-1, -2)).value, 1.0)
+
+
+def test_maxpool2d() -> None:
+    x = np.array(
+        [
+            [
+                [
+                    [1.0, -2.0, 3.0, 0.0, -1.0],
+                    [4.0, 5.0, -6.0, 2.0, 8.0],
+                    [-3.0, 7.0, 1.0, -4.0, 6.0],
+                    [9.0, -8.0, 0.0, 3.0, -2.0],
+                ],
+                [
+                    [-1.0, 2.0, -3.0, 4.0, -5.0],
+                    [6.0, -7.0, 8.0, -9.0, 10.0],
+                    [-11.0, 12.0, -13.0, 14.0, -15.0],
+                    [16.0, -17.0, 18.0, -19.0, 20.0],
+                ],
+            ]
+        ],
+        dtype=np.float64,
+    )
+
+    expected = np.array(
+        [
+            [
+                [
+                    [5.0, 5.0, 5.0, 8.0, 8.0],
+                    [9.0, 9.0, 5.0, 8.0, 8.0],
+                ],
+                [
+                    [6.0, 8.0, 8.0, 10.0, 10.0],
+                    [16.0, 18.0, 18.0, 20.0, 20.0],
+                ],
+            ]
+        ],
+        dtype=np.float64,
+    )
+
+    y = mpp.MaxPool2d(
+        kernel_size=(2, 3),
+        stride=(2, 1),
+        padding=(1, 1),
+        dilation=(2, 1),
+    )(mpp.Constant(x))
+
+    np.testing.assert_equal(y.value, expected)
 
 
 @pytest.mark.parametrize("is_causal", (False, True))
